@@ -1,3 +1,0 @@
-[submodule "docroot/js/bitratchet"]
-	path = docroot/js/bitratchet
-	url = git@github.com:kzar/bitratchet-js.git
