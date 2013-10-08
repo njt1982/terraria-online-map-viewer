@@ -1,4 +1,4 @@
-Terraris Online Map Viewer
+Terraria Online Map Viewer
 ==========================
 
 ** THIS IS IN ACTIVE DEVELOPMENT **
