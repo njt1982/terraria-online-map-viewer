@@ -17,6 +17,10 @@
       document.getElementById('output').insertBefore(el, null);
     };
     var writeInfoOut = function(label, data) {
+      if (data instanceof Array) {
+        data = data.join(', ');
+      }
+
       writeOut([
         '<strong>' + label + '</strong> : ',
         '<span>' + data + '</strong>'
@@ -29,12 +33,10 @@
         var w = new World().loadWithData(e.target.result);
 
         console.log(w);
-        writeInfoOut('Map Version', w.get('version'));
-        writeInfoOut('Map Name Length', w.get('nameLength'));
-        writeInfoOut('Map Name', w.get('name'));
-        writeInfoOut('Map Bounds (LRTB)', w.getBounds());
-        writeInfoOut('Map Size (W x H)', w.getDimensions());
 
+        Object.keys(w.getRawWorldProperties()).forEach(function(key) {
+          writeInfoOut(key, w.get(key));
+        });
       }
     };
 
