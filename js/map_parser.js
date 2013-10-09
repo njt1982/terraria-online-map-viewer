@@ -29,10 +29,10 @@
         var w = new World().loadWithData(e.target.result);
 
         console.log(w);
-        writeInfoOut('Map Version', w.getVersion());
-        writeInfoOut('Map Name Length', w.getNameLength());
-        writeInfoOut('Map Name', w.getName());
-        writeInfoOut('Map Bounds (LRTB)', w.getRect());
+        writeInfoOut('Map Version', w.get('version'));
+        writeInfoOut('Map Name Length', w.get('nameLength'));
+        writeInfoOut('Map Name', w.get('name'));
+        writeInfoOut('Map Bounds (LRTB)', w.getBounds());
         writeInfoOut('Map Size (W x H)', w.getDimensions());
 
       }
