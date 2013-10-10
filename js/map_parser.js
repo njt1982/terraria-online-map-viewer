@@ -11,6 +11,9 @@
     }
     document.getElementById('output').innerHTML = '';
 
+    var map = document.getElementById('map');
+    map.innerHTML = '';
+
     var writeOut = function(data) {
       var el = document.createElement('li');
       el.innerHTML = data;
@@ -30,13 +33,17 @@
     var reader = new FileReader();
     reader.onloadend = function(e) {
       if (e.target.readyState == FileReader.DONE) {
-        var w = new World().loadWithData(e.target.result);
+        var w = new World();
+        w.setDebugElement(document.getElementById('debug'));
+        w.setMapElement(map);
+        w.loadWithData(e.target.result);
 
-        console.log(w);
+        console.log(w.properties);
+        for (var key in w.properties) { writeInfoOut(key, w.get(key)); }
 
-        Object.keys(w.getRawWorldProperties()).forEach(function(key) {
-          writeInfoOut(key, w.get(key));
-        });
+        // Object.keys(w.getProperties()).forEach(function(key) {
+        //   writeInfoOut(key, w.get(key));
+        // });
       }
     };
 

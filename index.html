@@ -4,6 +4,20 @@
   <meta charset='utf-8'>
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <title>Terraria Online Map Viewer</title>
+  <style>
+
+    #map div {
+      padding:10px;
+      overflow: scroll;
+      height: 400px;
+      width: 500px;
+      border: 1px solid #000;
+      float:left;
+    }
+    ul#output {
+      overflow: hidden;
+    }
+  </style>
 </head>
 
 <body>
@@ -11,7 +25,8 @@
   <div id="uploader">
     <input type="file" id="file" name="file" />
   </div>
-
+  <div id="debug"></div>
+  <div id="map"></div>
   <ul id="output">
 
   </ul>
