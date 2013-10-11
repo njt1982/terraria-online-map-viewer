@@ -34,12 +34,12 @@
     reader.onloadend = function(e) {
       if (e.target.readyState == FileReader.DONE) {
         var w = new World();
-        w.setDebugElement(document.getElementById('debug'));
+        // w.setDebugElement(document.getElementById('debug'));
 
         w.loadWithData(e.target.result);
 
         for (var key in w.properties) { writeInfoOut(key, w.get(key)); }
-
+        console.log(w);
         setTimeout(function() {
           w.setMapElement(map);
           w.renderMap();

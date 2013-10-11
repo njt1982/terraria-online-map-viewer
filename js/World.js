@@ -39,6 +39,9 @@ function World(p) {
   this.properties = p || {};
   this.tiles = [];
   this.tileStats = {};
+  this.chests = [];
+  this.signs = [];
+  this.npcs = [];
 
   this.framedTiles = [3,4,5,10,11,12,13,14,15,16,17,18,19,20,21,24,26,27,28,29,31,33,34,35,36,42,50,55,61,71,72,73,74,77,78,79,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,110,113,114,125,126,128,129,132,133,134,135,136,137,138,139,141,142,143,144,149,165,170,171,172,173,174,178,184,185,186,187,201,207,209,210,212,215,216,217,218,219,220,227,228,231,233,235,236,237,238,239,240,241,242,243,244,245,246,247];
   this.solidTiles = [0,1,2,6,7,8,9,10,11,19,22,23,25,30,37,38,39,40,41,43,44,45,46,47,48,53,54,56,57,58,59,60,63,64,65,66,67,68,70,75,76,107,108,109,111,112,116,117,118,119,120,121,122,123,130,137,138,140,145,146,147,148,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,166,167,168,169,175,176,177,179,180,181,182,183,188,189,190,191,192,193,194,195,196,197,198,199,200,202,203,204,206,208,211,221,222,223,224,225,226,229,230,232,234,235,239,248,249,250];
@@ -54,6 +57,7 @@ World.prototype.setDebugElement = function(el) {
   this.debugElement = el;
 };
 World.prototype.debug = function(str) {
+  console.log(str);
   if (this.debugElement === undefined) return;
 
   this.debugElement.innerHTML = str;
@@ -61,48 +65,41 @@ World.prototype.debug = function(str) {
 
 World.prototype.movePointer = function(offset) { this.pointer += offset; };
 
-World.prototype.readBoolean = function() {
+World.prototype.read = function(type, size, length) {
   var p = this.pointer;
-  this.movePointer(1);
-  // return this.bFile.getByteAt(p) ? true : false;
-  return this.bFile.getByteAt(p);
+  this.pointer += size;
+  return this.bFile["get" + type + "At"](p, length ? size : null);
 };
 
 World.prototype.readInt16 = function() {
-  var p = this.pointer;
-  this.movePointer(2);
-  return this.bFile.getShortAt(p);
+  return this.read('SShort', 2);
 };
 
 World.prototype.readInt32 = function() {
-  var p = this.pointer;
-  this.movePointer(4);
-  return this.bFile.getLongAt(p);
-};
-
-World.prototype.readSingle = function() {
-  var p = this.pointer;
-  this.movePointer(4);
-  return new BinaryParser(0,0).toFloat(this.bFile.getBytesAt(p, 4));
-};
-
-World.prototype.readDouble = function() {
-  var p = this.pointer;
-  this.movePointer(8);
-  return new BinaryParser(0,0).toDouble(this.bFile.getBytesAt(p, 8));
+  return this.read('SLong', 4);
 };
 
 World.prototype.readByte = function() {
-  var p = this.pointer;
-  this.movePointer(1);
-  return this.bFile.getByteAt(p);
+  return this.read('Byte', 1);
 };
 
-World.prototype.readString = function(length) {
-  var p = this.pointer;
-  this.movePointer(length);
-  return this.bFile.getStringAt(p, length);
+World.prototype.readString = function() {
+  var size = this.readByte();
+  return this.read('String', size, true);
 };
+
+World.prototype.readBoolean = function() {
+  return this.readByte() ? true : false;
+};
+
+World.prototype.readSingle = function() {
+  return new BinaryParser(0,0).toFloat(this.bFile.getBytesAt(this.pointer += 4, 4));
+};
+
+World.prototype.readDouble = function() {
+  return new BinaryParser(0,0).toDouble(this.bFile.getBytesAt(this.pointer += 8, 8));
+};
+
 
 
 
@@ -119,14 +116,17 @@ World.prototype.loadWithData = function(data) {
   this.pointer = 0;
   this.tiles = [];
   this.tileStats = {};
+  this.chests = [];
+  this.signs = [];
+  this.npcs = [];
 
   this.debug('Loading properties');
 
   this.set('Version', this.readInt32());
 
-  this.set('NameLength', this.readByte());
-
-  this.set('Name', this.readString(this.get('NameLength')));
+  // this.set('NameLength', this.readByte());
+  // this.set('Name', this.readString(this.get('NameLength')));
+  this.set('Name', this.readString());
 
   this.set('WorldID', this.readInt32());
 
@@ -274,7 +274,7 @@ World.prototype.loadWithData = function(data) {
     }
   }
 
-  this.debug('Loading properties complete, initializing tiles.');
+  this.debug('Loading tiles.');
 
   // Read tiles!
   var w = this.get('TilesWide'),
@@ -369,13 +369,114 @@ World.prototype.loadWithData = function(data) {
     if (this.versionMin(25)) {
       tile.rle = this.readInt16();
 
-      if (tile.rle < 0) { console.log('BAD RLE @ XY: ' + x + ', ' + y); }
+      if (tile.rle < 0) { this.debug('BAD RLE @ i: ' + i); }
 
       if (tile.rle > 0) {
         for (var k = 0; k < tile.rle; k++, i++, this.tiles.push(tile));
       }
     }
   }
+
+  // Chests
+  this.debug('Loading chests.');
+  var itemsPerChest = this.versionMin(58) ? 40 : 20;
+  for (var ci = 0; ci < 1000; ci++) {
+    if (this.readBoolean()) {
+      var chest = {};
+      chest.items = [];
+      chest.x = this.readInt32();
+      chest.y = this.readInt32();
+      for (var j = 0; j < itemsPerChest; j++) {
+        var chestItem = {};
+        if (this.versionMin(59)) {
+          chestItem.stack = this.readInt16();
+        }
+        else {
+          chestItem.stack = this.readByte();
+        }
+
+        if (chestItem.stack > 0) {
+          var name = '';
+          if (this.versionMin(38)) {
+            var itemId = this.readInt32();
+            if (itemId < 0) {
+              itemId = -itemId;
+              // TODO - make item lookup array
+            }
+            name = itemId;
+          }
+          else {
+            name = this.readString();
+          }
+          var prefix = '';
+          if (this.versionMin(36)) {
+            var itemPfx = this.readByte();
+            // TODO make prefix lookup array
+            prefix = itemPfx;
+          }
+          chest.name = name;
+          chest.prefix = prefix;
+        }
+      }
+      this.chests.push(chest);
+    }
+  }
+
+  // Signs
+  this.debug('Loading signs.');
+  for (var si = 0; si < 1000; si++) {
+    if (this.readBoolean()) {
+      var sign = {
+        text: this.readString(),
+        x: this.readInt32(),
+        y: this.readInt32(),
+      };
+
+      this.signs.push(sign);
+    }
+  }
+
+
+  // NPCs
+  this.debug('Loading npcs.');
+  while (this.readBoolean()) {
+    var NPC = {
+      title: this.readString(),
+      name: '',
+      x: this.readSingle(),
+      y: this.readSingle(),
+      isHomeless: this.readBoolean(),
+      homeX: this.readInt32(),
+      homeY: this.readInt32()
+    };
+    this.npcs.push(NPC);
+  }
+
+  // Read names
+  this.debug('Loading names.');
+  if (this.versionMin(31)) {
+    var numNames = 9;
+    if (this.versionMin(34)) {
+      numNames++;
+    }
+    if (this.versionMin(65)) {
+      numNames += 8;
+    }
+
+    for (var ni = 0; ni < numNames; ni++) {
+      var npcName = this.readString();
+      // TODO - assign this name to the right NPC...
+    }
+  }
+
+
+  // Verify!
+  this.debug('verifying');
+  this.verify = {
+    success: this.readBoolean(),
+    worldName: this.readString(),
+    worldId: this.readInt32
+  };
 };
 
 
