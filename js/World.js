@@ -123,16 +123,7 @@ World.prototype.loadWithData = function(data) {
 
   this.set('Version', this.readInt32());
 
-  // This seems wrong?!
-  // For some reason, iOS Terraria has a 4 byte gap here?!
-  if (this.get('Version') === 49) {
-    this.movePointer(4);
-    this.set('NameLength', this.readByte());
-    this.movePointer(3);
-  }
-  else {
-    this.set('NameLength', this.readByte());
-  }
+  this.set('NameLength', this.readByte());
 
   this.set('Name', this.readString(this.get('NameLength')));
 
