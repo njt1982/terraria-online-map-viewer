@@ -35,15 +35,15 @@
       if (e.target.readyState == FileReader.DONE) {
         var w = new World();
         w.setDebugElement(document.getElementById('debug'));
-        w.setMapElement(map);
+
         w.loadWithData(e.target.result);
 
-        console.log(w.properties);
         for (var key in w.properties) { writeInfoOut(key, w.get(key)); }
 
-        // Object.keys(w.getProperties()).forEach(function(key) {
-        //   writeInfoOut(key, w.get(key));
-        // });
+        setTimeout(function() {
+          w.setMapElement(map);
+          w.renderMap();
+        }, 100);
       }
     };
 
