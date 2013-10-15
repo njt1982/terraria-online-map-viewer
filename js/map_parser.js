@@ -31,19 +31,33 @@
     };
 
     var reader = new FileReader();
+    var w = new World();
+    w.setMapElement(document.getElementById('map'));
+    w.setDebugElement(document.getElementById('debug'));
+
     reader.onloadend = function(e) {
       if (e.target.readyState == FileReader.DONE) {
-        var w = new World();
-        // w.setDebugElement(document.getElementById('debug'));
 
-        w.loadWithData(e.target.result);
+        vkthread.exec(
+          function(data) {
+            return new World().loadWithData(data).serialize();
+          },
+          [ e.target.result ],
+          function (s) {
+            w.properties = s.properties;
+            w.tiles = s.tiles;
+            w.tileStats = s.tileStats;
+            w.chests = s.chests;
+            w.signs = s.signs;
+            w.npcs = s.npcs;
 
-        for (var key in w.properties) { writeInfoOut(key, w.get(key)); }
-        console.log(w);
-        setTimeout(function() {
-          w.setMapElement(map);
-          w.renderMap();
-        }, 100);
+
+            for (var key in w.properties) { writeInfoOut(key, w.get(key)); }
+
+            w.renderMap();
+          },
+          ['/js/World.js', '/js/BinaryFile.js', '/js/classes.binary-parser/binary-parser.js']
+        );
       }
     };
 
