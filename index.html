@@ -7,15 +7,20 @@
   <style>
 
     #map div {
-      padding:10px;
       overflow: scroll;
-      height: 400px;
-      width: 500px;
-      border: 1px solid #000;
-      float:left;
+      height: 240px;
+      width: 840px;
+      border: 1px solid #eee;
+    }
+    #map div canvas {
+      zoom:0.2;
     }
     ul#output {
       overflow: hidden;
+
+      -webkit-column-count:6;
+      -moz-column-count:6;
+      column-count:6;
     }
   </style>
 </head>
@@ -31,8 +36,6 @@
 
   </ul>
 
-  <!-- // <script type="text/javascript" src="js/classes.binary-parser/binary-parser.js"></script> -->
-  <!-- // <script type="text/javascript" src="js/BinaryFile.js"></script> -->
   <script type="text/javascript" src="js/World.js"></script>
   <script type="text/javascript" src="js/vkthread/vkthread/vkthread.js"></script>
   <script type="text/javascript" src="js/map_parser.js"></script>
