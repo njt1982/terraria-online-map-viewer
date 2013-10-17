@@ -29,35 +29,51 @@
         '<span>' + data + '</strong>'
       ].join(''));
     };
+    var writeStatus = function(status) {
+      document.getElementById('debug').innerHTML = status;
+      console.log(status);
+    };
+
+
+
+    writeStatus('Loading File');
+
+    var w;
 
     var reader = new FileReader();
-    var w = new World();
-    w.setMapElement(document.getElementById('map'));
-    w.setDebugElement(document.getElementById('debug'));
-
     reader.onloadend = function(e) {
       if (e.target.readyState == FileReader.DONE) {
 
-        vkthread.exec(
-          function(data) {
-            return new World().loadWithData(data).serialize();
-          },
-          [ e.target.result ],
-          function (s) {
-            w.properties = s.properties;
-            w.tiles = s.tiles;
-            w.tileStats = s.tileStats;
-            w.chests = s.chests;
-            w.signs = s.signs;
-            w.npcs = s.npcs;
+        var worker = new Worker('js/map_parser_worker.js');
+        worker.onmessage = function (e) {
+          response = e.data;
+          switch (response.op) {
+            case 'debug' : writeStatus(response.data); break;
 
+            case 'world_data' :
+              writeStatus('World data complete');
+              w = new World(
+                  response.data.properties,
+                  response.data.tiles,
+                  response.data.tileStats,
+                  response.data.chests,
+                  response.data.signs,
+                  response.data.npcs
+                );
+              writeStatus('Writing properties');
 
-            for (var key in w.properties) { writeInfoOut(key, w.get(key)); }
+              for (var key in w.properties) { writeInfoOut(key, w.get(key)); }
 
-            w.renderMap();
-          },
-          ['/js/World.js', '/js/BinaryFile.js', '/js/classes.binary-parser/binary-parser.js']
-        );
+              writeStatus('Finished');
+              break;
+          }
+        };
+
+        writeStatus('Beginning Parsing');
+        worker.postMessage(JSON.stringify({
+          op: 'parse',
+          data: e.target.result
+        }));
       }
     };
 

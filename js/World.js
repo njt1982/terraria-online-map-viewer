@@ -53,14 +53,13 @@ World.prototype.setMapElement = function(el) {
   this.mapElement = el;
 };
 
-World.prototype.setDebugElement = function(el) {
-  this.debugElement = el;
-};
 World.prototype.debug = function(str) {
-  // console.log(str);
-  //
-  if (this.debugElement === undefined) return;
-  this.debugElement.innerHTML = str;
+  if (postMessage !== undefined) {
+    postMessage({
+      op: 'debug',
+      data: str,
+    });
+  }
 };
 
 World.prototype.movePointer = function(offset) { this.pointer += offset; };
@@ -481,6 +480,8 @@ World.prototype.loadWithData = function(data) {
     }
   }
 
+  this.debug('Current Pointer Position: ' + this.pointer);
+  this.debug('World Data Length: ' + data.length);
 
   // Verify!
   this.debug('verifying');
