@@ -88,15 +88,61 @@ World.prototype.readString = function() {
 };
 
 World.prototype.readBoolean = function() {
-  return this.readByte() ? true : false;
+  var v = this.readByte();
+  // if (v > 1) this.debug ('Bad Bool: ' + v);
+  return v ? true : false;
+};
+
+// https://gist.github.com/kg/2192799
+World.prototype.decodeFloat = function(bytes, signBits, exponentBits, fractionBits, eMin, eMax, littleEndian) {
+  var totalBits = (signBits + exponentBits + fractionBits);
+
+  var binary = "";
+  var i = 0;
+
+  for (i = 0, l = bytes.length; i < l; i++) {
+    var bits = bytes[i].toString(2);
+    while (bits.length < 8)
+      bits = "0" + bits;
+
+    if (littleEndian)
+      binary = bits + binary;
+    else
+      binary += bits;
+  }
+
+  var sign = (binary.charAt(0) == '1')?-1:1;
+  var exponent = parseInt(binary.substr(signBits, exponentBits), 2) - eMax;
+  var significandBase = binary.substr(signBits + exponentBits, fractionBits);
+  var significandBin = '1'+significandBase;
+  i = 0;
+  var val = 1;
+  var significand = 0;
+
+  if (exponent == -eMax) {
+      if (significandBase.indexOf('1') == -1)
+          return 0;
+      else {
+          exponent = eMin;
+          significandBin = '0'+significandBase;
+      }
+  }
+
+  while (i < significandBin.length) {
+      significand += val * parseInt(significandBin.charAt(i), 10);
+      val = val / 2;
+      i++;
+  }
+
+  return sign * significand * Math.pow(2, exponent);
 };
 
 World.prototype.readSingle = function() {
-  return new BinaryParser(0,0).toFloat(this.bFile.getBytesAt(this.pointer += 4, 4));
+  return this.decodeFloat(this.bFile.getBytesAt(this.pointer += 4, 4), 1, 8, 23, -126, 127, true);
 };
 
 World.prototype.readDouble = function() {
-  return new BinaryParser(0,0).toDouble(this.bFile.getBytesAt(this.pointer += 8, 8));
+  return this.decodeFloat(this.bFile.getBytesAt(this.pointer += 8, 8), 1, 11, 52, -1022, 1023, true);
 };
 
 
@@ -134,8 +180,6 @@ World.prototype.loadWithData = function(data) {
 
   this.set('Version', this.readInt32());
 
-  // this.set('NameLength', this.readByte());
-  // this.set('Name', this.readString(this.get('NameLength')));
   this.set('Name', this.readString());
 
   this.set('WorldID', this.readInt32());
@@ -179,10 +223,11 @@ World.prototype.loadWithData = function(data) {
       this.readInt32()
     ]);
     this.set('IceBackStyle', this.readInt32());
-  }
-  if (this.versionMin(61)) {
-    this.set('JungleBackStyle', this.readInt32());
-    this.set('HellBackStyle', this.readInt32());
+
+    if (this.versionMin(61)) {
+      this.set('JungleBackStyle', this.readInt32());
+      this.set('HellBackStyle', this.readInt32());
+    }
   }
 
 
@@ -211,7 +256,7 @@ World.prototype.loadWithData = function(data) {
   this.set('KilledEaterOfWorlds', this.readBoolean());
   this.set('KilledSkeleton', this.readBoolean());
 
-  this.set('KilledQueenBee', this.versionMin(66) ? this.readBoolean() : null);
+  this.set('KilledQueenBee', this.versionMin(66) ? this.readBoolean() : false);
 
   if (this.versionMin(44)) {
     this.set('KilledTheDestroyer', this.readBoolean());
@@ -228,9 +273,9 @@ World.prototype.loadWithData = function(data) {
   if (this.versionMin(29)) {
     this.set('SavedGoblin', this.readBoolean());
     this.set('SavedWizard', this.readBoolean());
-    if (this.versionMin(34)) {
-      this.set('SavedMechanic', this.readBoolean());
-    }
+
+    this.set('SavedMechanic', this.versionMin(34) ? this.readBoolean() : null);
+
     this.set('DefeatedGoblinInvasion', this.readBoolean());
 
     this.set('KilledClown', this.versionMin(32) ? this.readBoolean() : null);
@@ -302,21 +347,25 @@ World.prototype.loadWithData = function(data) {
       if (isNaN(this.tileStats[tile.type])) this.tileStats[tile.type] = 0;
       this.tileStats[tile.type]++;
 
-      // if (tile.type == 127) {
+      if (tile.type == 127)
+        tile.active = false;
+
+      // if (tile.type > 250 ) {
+      //   this.debug('Invalid tile "' + i + '" - ' + tile.type);
       //   tile.active = false;
       // }
 
       if (this.framedTiles.indexOf(tile.type) >= 0) {
-        // if (tile.type == 4 && this.get('version') < 28) {
-        //   tile.uv = [0,0];
-        // }
-        // else if (tile.type == 19 && this.get('version') < 40) {
-        //   tile.uv = [0,0];
-        // }
-        // else {
+        if (tile.type == 4 && this.get('version') < 28) {
+          tile.uv = [0,0];
+        }
+        else if (tile.type == 19 && this.get('version') < 40) {
+          tile.uv = [0,0];
+        }
+        else {
           tile.uv = [this.readInt16(), this.readInt16()];
-        //   if (tile.type == 144) { tile.uv[1] = 0; }
-        // }
+          if (tile.type == 144) { tile.uv[1] = 0; }
+        }
       }
       else {
         tile.uv = [-1, -1];
@@ -335,6 +384,10 @@ World.prototype.loadWithData = function(data) {
     // Wall Colour
     if (this.readBoolean()) {
       tile.Wall = this.readByte();
+      // if (tile.Wall > 112) {
+      //   this.debug('Bad Wall at ' + i + ' : ' + tile.Wall);
+      //   tile.Wall = 0;
+      // }
       if (this.versionMin(48) && this.readBoolean()) {
         tile.WallColor = this.readByte;
       }
@@ -366,7 +419,8 @@ World.prototype.loadWithData = function(data) {
         }
 
         // Actuator and In Active - need an isSolid check!
-        if (this.versionMin(42) && (this.solidTiles.indexOf(tile.type) >= 0)) {
+        // if (this.versionMin(42) && (this.solidTiles.indexOf(tile.type) >= 0)) {
+        if (this.versionMin(42)) {
           tile.actuator = this.readBoolean();
           tile.inactive = this.readBoolean();
         }
@@ -378,12 +432,12 @@ World.prototype.loadWithData = function(data) {
     this.tiles.push(tile);
 
     if (this.versionMin(25)) {
-      tile.rle = this.readInt16();
+      var rle = this.readInt16();
 
-      if (tile.rle < 0) { this.debug('BAD RLE @ i: ' + i); }
+      if (rle < 0) { this.debug('Bad RLE "' + rle + '"@ i: ' + i); }
 
-      if (tile.rle > 0) {
-        for (var k = 0; k < tile.rle; k++, i++, this.tiles.push(tile));
+      if (rle > 0) {
+        for (var k = 0; k < rle; k++, i++, this.tiles.push(tile));
       }
     }
   }
@@ -397,6 +451,7 @@ World.prototype.loadWithData = function(data) {
       chest.items = [];
       chest.x = this.readInt32();
       chest.y = this.readInt32();
+      // this.debug('Chest found at ' + chest.x + ', ' + chest.y);
       for (var j = 0; j < itemsPerChest; j++) {
         var chestItem = {};
         if (this.versionMin(59)) {
@@ -442,6 +497,7 @@ World.prototype.loadWithData = function(data) {
         x: this.readInt32(),
         y: this.readInt32(),
       };
+      // this.debug('Sign found at ' + sign.x + ', ' + sign.y + ' : ' + sign.text);
 
       this.signs.push(sign);
     }
@@ -460,6 +516,7 @@ World.prototype.loadWithData = function(data) {
       homeX: this.readInt32(),
       homeY: this.readInt32()
     };
+    // this.debug('NPC found at ' + NPC.x + ', ' + NPC.y);
     this.npcs.push(NPC);
   }
 
@@ -476,20 +533,22 @@ World.prototype.loadWithData = function(data) {
 
     for (var ni = 0; ni < numNames; ni++) {
       var npcName = this.readString();
+      this.debug('NPC Name: ' + npcName);
       // TODO - assign this name to the right NPC...
     }
   }
 
-  this.debug('Current Pointer Position: ' + this.pointer);
-  this.debug('World Data Length: ' + data.length);
+  // this.debug('Current Pointer Position: ' + this.pointer);
+  // this.debug('World Data Length: ' + data.length);
 
   // Verify!
-  this.debug('verifying');
+  this.debug('Verifying');
   this.verify = {
     success: this.readBoolean(),
     worldName: this.readString(),
     worldId: this.readInt32
   };
+  // this.debug(JSON.stringify(this.verify));
 
   return this;
 };

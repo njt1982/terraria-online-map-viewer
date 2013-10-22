@@ -1,14 +1,14 @@
 
 
 function debug(message) {
-  postMessage(JSON.stringify({
+  postMessage({
     op: 'debug',
     data: message
-  }));
+  });
 }
 
 function op_Parse(data) {
-  importScripts('World.js', 'BinaryFile.js', 'classes.binary-parser/binary-parser.js');
+  importScripts('World.js', 'BinaryFile.js');
   return new World().loadWithData(data).serialize();
 }
 
@@ -16,6 +16,6 @@ function op_Parse(data) {
 onmessage = function(e) {
   var message = JSON.parse(e.data);
   switch (message.op) {
-    case 'parse': postMessage(op_Parse(message.data));
+    case 'parse': postMessage({op: 'world_data', data: op_Parse(message.data)});
   }
 };

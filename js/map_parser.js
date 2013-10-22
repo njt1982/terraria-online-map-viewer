@@ -66,6 +66,10 @@
 
               writeStatus('Finished');
               break;
+
+            default :
+              console.log(response);
+              break;
           }
         };
 
