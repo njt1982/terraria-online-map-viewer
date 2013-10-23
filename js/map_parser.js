@@ -64,7 +64,35 @@
 
               for (var key in w.properties) { writeInfoOut(key, w.get(key)); }
 
-              writeStatus('Finished');
+              writeStatus('Generating map');
+
+              worker.postMessage({
+                op: 'renderMap',
+                tiles: w.tiles,
+              });
+              break;
+
+            case 'mapPixels' :
+              writeStatus('Rendering canvas from pixels');
+              var buffer = document.createElement('canvas');
+              buffer.width = w.get('TilesWide');
+              buffer.height = w.get('TilesHigh');
+
+              var div = document.createElement('div');
+              div.insertBefore(buffer, null);
+
+              var ctx = buffer.getContext('2d');
+              ctx.fillStyle = '#FFF';
+              ctx.fillRect(0, 0, buffer.width, buffer.height);
+
+              var imagedata = ctx.getImageData(0, 0, buffer.width, buffer.height);
+              var pixels = new Uint8Array(response.data);
+              imagedata.data.set(pixels);
+              ctx.putImageData(imagedata, 0, 0);
+
+              map.insertBefore(div, null);
+              writeStatus('Rendering map complete');
+
               break;
 
             default :
@@ -74,10 +102,10 @@
         };
 
         writeStatus('Beginning Parsing');
-        worker.postMessage(JSON.stringify({
+        worker.postMessage({
           op: 'parse',
           data: e.target.result
-        }));
+        });
       }
     };
 
